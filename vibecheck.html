@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe Check — What's Your Aesthetic?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+/* ─── DESIGN TOKENS ─────────────────────────────────────────── */
+:root {
+  --ink:      #0e0d11;
+  --paper:    #f5f2ed;
+  --fog:      #e8e4de;
+  --warm:     #d4cfc8;
+  --muted:    #8a847c;
+  --ghost:    #b8b2aa;
+
+  /* per-aesthetic accent (set by JS) */
+  --acc:      #c8a97e;
+  --acc-rgb:  200,169,126;
+
+  --serif:    'Instrument Serif', Georgia, serif;
+  --sans:     'DM Sans', system-ui, sans-serif;
+  --mono:     'Space Mono', monospace;
+
+  --r-sm: 12px;
+  --r-md: 20px;
+  --r-lg: 32px;
+  --r-xl: 48px;
+}
+
+/* ─── RESET ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-weight: 300;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+/* ─── NOISE TEXTURE OVERLAY ─────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+}
+
+/* ─── SCREENS ───────────────────────────────────────────────── */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  z-index: 1;
+}
+.screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(16px);
+}
+
+/* ─── LANDING ───────────────────────────────────────────────── */
+#landing {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.landing-inner {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ghost);
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.eyebrow::before, .eyebrow::after {
+  content: '';
+  width: 32px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.4;
+}
+
+.landing-title {
+  font-family: var(--serif);
+  font-size: clamp(52px, 14vw, 96px);
+  line-height: 0.92;
+  letter-spacing: -2px;
+  margin-bottom: 8px;
+}
+.landing-title em {
+  font-style: italic;
+  color: var(--acc);
+}
+
+.landing-sub {
+  font-size: 15px;
+  color: var(--ghost);
+  margin: 20px 0 40px;
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+/* Signature element: rotating aesthetic tags */
+.tag-orbit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 44px;
+}
+.tag-pill {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 6px 14px;
+  border-radius: 100px;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.5);
+  animation: pillFloat 3s ease-in-out infinite;
+}
+.tag-pill:nth-child(2) { animation-delay: 0.4s; }
+.tag-pill:nth-child(3) { animation-delay: 0.8s; }
+.tag-pill:nth-child(4) { animation-delay: 1.2s; }
+.tag-pill:nth-child(5) { animation-delay: 1.6s; }
+.tag-pill:nth-child(6) { animation-delay: 2.0s; }
+
+@keyframes pillFloat {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-4px); opacity: 0.9; }
+}
+
+.btn-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  border: none;
+  border-radius: 100px;
+  padding: 16px 36px;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  letter-spacing: -0.2px;
+}
+.btn-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+}
+.btn-start:active { transform: translateY(0); }
+
+.btn-arrow {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.landing-note {
+  margin-top: 20px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+/* ─── QUIZ ──────────────────────────────────────────────────── */
+#quiz {
+  background: var(--paper);
+  justify-content: flex-start;
+  padding: 0;
+}
+
+.quiz-inner {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 40px 24px 60px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* Progress */
+.progress-bar-wrap {
+  height: 2px;
+  background: var(--fog);
+  border-radius: 2px;
+  margin-bottom: 48px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--ink);
+  border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.q-counter {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.q-text {
+  font-family: var(--serif);
+  font-size: clamp(22px, 5.5vw, 32px);
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+  margin-bottom: 36px;
+  flex-shrink: 0;
+}
+
+.options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.opt-btn {
+  background: white;
+  border: 1.5px solid var(--fog);
+  border-radius: var(--r-md);
+  padding: 18px 20px;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.4;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.opt-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.opt-btn:hover {
+  border-color: var(--ink);
+  transform: translateX(4px);
+}
+.opt-letter {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--ghost);
+  min-width: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.opt-btn:hover .opt-letter { color: var(--ink); }
+.opt-btn.selected {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.opt-btn.selected .opt-letter { color: var(--ghost); }
+
+/* ─── LOADING ───────────────────────────────────────────────── */
+#loading {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.loading-inner { text-align: center; }
+
+.loading-glyph {
+  font-family: var(--serif);
+  font-size: 72px;
+  font-style: italic;
+  line-height: 1;
+  margin-bottom: 24px;
+  animation: glyphPulse 1.8s ease-in-out infinite;
+}
+@keyframes glyphPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+.loading-line {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--ghost);
+  text-transform: uppercase;
+}
+.loading-dots::after {
+  content: '';
+  animation: dots 1.4s steps(4, end) infinite;
+}
+@keyframes dots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}
+
+/* ─── RESULT ────────────────────────────────────────────────── */
+#result {
+  background: var(--paper);
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.result-inner {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* THE CARD — this is what gets screenshotted */
+#shareCard {
+  border-radius: var(--r-lg);
+  padding: 40px 36px;
+  background: var(--ink);
+  color: var(--paper);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+#shareCard::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: rgba(var(--acc-rgb), 0.18);
+  filter: blur(60px);
+  pointer-events: none;
+}
+#shareCard::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  left: -40px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(var(--acc-rgb), 0.10);
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.card-eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ghost);
+  margin-bottom: 20px;
+}
+
+.card-identity {
+  font-family: var(--serif);
+  font-size: clamp(30px, 8vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -1px;
+  margin-bottom: 20px;
+  color: var(--paper);
+}
+.card-identity span {
+  color: var(--acc);
+  font-style: italic;
+}
+
+.card-divider {
+  width: 40px;
+  height: 1.5px;
+  background: rgba(var(--acc-rgb), 0.5);
+  margin-bottom: 20px;
+}
+
+.card-desc {
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: rgba(245,242,237,0.75);
+  margin-bottom: 28px;
+}
+
+.card-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+.trait {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: rgba(var(--acc-rgb), 0.15);
+  color: var(--acc);
+  border: 1px solid rgba(var(--acc-rgb), 0.25);
+}
+
+.card-footer {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: rgba(245,242,237,0.25);
+  text-transform: uppercase;
+}
+
+/* Action buttons */
+.action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-action {
+  flex: 1;
+  min-width: 130px;
+  padding: 14px 18px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--fog);
+  background: white;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.btn-action:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  transform: translateY(-2px);
+}
+.btn-action.primary {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.btn-action.primary:hover {
+  background: #1e1c24;
+}
+
+.btn-retry {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--fog);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-retry:hover { color: var(--ink); border-color: var(--ink); }
+
+/* Result body text from Claude */
+.result-extra {
+  margin-top: 28px;
+  padding: 24px;
+  background: white;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--fog);
+}
+.result-extra h3 {
+  font-family: var(--serif);
+  font-size: 18px;
+  margin-bottom: 12px;
+  letter-spacing: -0.3px;
+}
+.result-extra p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+/* ─── TOAST ─────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 12px 24px;
+  border-radius: 100px;
+  z-index: 999;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────── */
+@media (max-width: 400px) {
+  .landing-title { font-size: 52px; }
+  .action-row { flex-direction: column; }
+  #shareCard { padding: 28px 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── LANDING ──────────────────────────────────────────────── -->
+<section class="screen" id="landing">
+  <div class="landing-inner">
+    <div class="eyebrow">Aesthetic Identity Quiz</div>
+    <h1 class="landing-title">Vibe<br><em>Check</em></h1>
+    <p class="landing-sub">7 questions. One truth. Find out which aesthetic actually lives in your head rent-free.</p>
+    <div class="tag-orbit">
+      <div class="tag-pill">that girl</div>
+      <div class="tag-pill">dark academia</div>
+      <div class="tag-pill">goblincore</div>
+      <div class="tag-pill">silent luxe</div>
+      <div class="tag-pill">desi y2k</div>
+      <div class="tag-pill">main character</div>
+    </div>
+    <button class="btn-start" onclick="startQuiz()">
+      Find my vibe
+      <span class="btn-arrow">→</span>
+    </button>
+    <p class="landing-note">Takes 60 seconds · Share your result</p>
+  </div>
+</section>
+
+<!-- ── QUIZ ─────────────────────────────────────────────────── -->
+<section class="screen hidden" id="quiz">
+  <div class="quiz-inner">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <div class="q-counter" id="qCounter">Question 1 of 7</div>
+    <div class="q-text" id="qText"></div>
+    <div class="options-grid" id="optionsGrid"></div>
+  </div>
+</section>
+
+<!-- ── LOADING ───────────────────────────────────────────────── -->
+<section class="screen hidden" id="loading">
+  <div class="loading-inner">
+    <div class="loading-glyph">✦</div>
+    <div class="loading-line">Reading your vibe<span class="loading-dots"></span></div>
+  </div>
+</section>
+
+<!-- ── RESULT ────────────────────────────────────────────────── -->
+<section class="screen hidden" id="result">
+  <div class="result-inner">
+
+    <div id="shareCard">
+      <div class="card-eyebrow">Your aesthetic identity</div>
+      <div class="card-identity" id="cardIdentity">—</div>
+      <div class="card-divider"></div>
+      <div class="card-desc" id="cardDesc">—</div>
+      <div class="card-traits" id="cardTraits"></div>
+      <div class="card-footer">vibecheck.vercel.app</div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-action primary" onclick="saveCard()">⬇ Save card</button>
+      <button class="btn-action" onclick="shareWhatsApp()">Share on WhatsApp</button>
+    </div>
+
+    <div class="result-extra" id="resultExtra">
+      <h3 id="resultTitle">Your full read</h3>
+      <p id="resultBody">—</p>
+    </div>
+
+    <button class="btn-retry" onclick="restartQuiz()">↺ Take it again</button>
+  </div>
+</section>
+
+<!-- ── TOAST ─────────────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── DATA ──────────────────────────────────────────────────── */
+const QUESTIONS = [
+  {
+    q: "It's 11pm. You are:",
+    opts: [
+      "Journaling tomorrow's goals, probably colour-coded",
+      "Reading something heavy and crying a little",
+      "Down a YouTube rabbit hole about frogs or fungi",
+      "On your third outfit change for absolutely no reason"
+    ]
+  },
+  {
+    q: "Your phone gallery is mostly:",
+    opts: [
+      "Aesthetic flat lays and morning sky pics",
+      "Black and white architecture and book spines",
+      "Blurry nature pics and things found on the ground",
+      "Screenshots of memes you'll never send to anyone"
+    ]
+  },
+  {
+    q: "Someone cancels plans. You:",
+    opts: [
+      "Use the time to meal prep and do a 10-step skincare",
+      "Honestly relieved. Sit with your thoughts for hours",
+      "Go outside and find a cool rock. Perfect evening.",
+      "Make it a full cinematic moment in your head"
+    ]
+  },
+  {
+    q: "Your Spotify Wrapped is probably:",
+    opts: [
+      "Motivational pop, lo-fi beats, and one Sabrina Carpenter album",
+      "Arctic Monkeys, Lana, something German you can't explain",
+      "Hyperpop, video game OSTs, one classical piece from nowhere",
+      "SZA, Arijit Singh, Tyler the Creator — no explanation offered"
+    ]
+  },
+  {
+    q: "Your ideal Saturday looks like:",
+    opts: [
+      "Gym at 7am, iced matcha, vision board, glow up achieved",
+      "Bookshop, overcast weather, solo lunch, no talking",
+      "Flea market, found something weird, peak happiness",
+      "Did nothing but somehow it felt like a movie"
+    ]
+  },
+  {
+    q: "Your fashion vibe is:",
+    opts: [
+      "Clean, minimal, everything coordinates perfectly",
+      "Vintage, layered, looks like you raided a professor's closet",
+      "Chaotic but intentional. Frog patch on the tote bag.",
+      "Whatever's clean — but it still somehow looks intentional"
+    ]
+  },
+  {
+    q: "Deep down, you are:",
+    opts: [
+      "Optimistic and a little obsessed with becoming your best self",
+      "Deeply romantic but make it tragic",
+      "Weird, proud of it, collecting experiences like objects",
+      "Too self-aware for your own good and you know it"
+    ]
+  }
+];
+
+// Option index → aesthetic bucket (A=0,B=1,C=2,D=3)
+const AESTHETICS = [
+  {
+    name: "That Girl",
+    accent: "#b8956a",
+    accentRgb: "184,149,106",
+    desc: "You're not chasing perfection — you've redefined it. Morning routines, clean spaces, green drinks you actually enjoy. Discipline looks good on you.",
+    traits: ["main character", "disciplined", "glowing up", "5am energy"],
+    fullTitle: "The Ritual Architect",
+    fullBody: "You treat your life like a project worth optimising. Not in an anxious way — in a 'I actually enjoy the process' way. People call it That Girl energy but you just call it Tuesday. The scary part? It's working."
+  },
+  {
+    name: "Dark Academia",
+    accent: "#7a6a52",
+    accentRgb: "122,106,82",
+    desc: "You've romanticised libraries, rainy afternoons, and the specific sadness of finishing a good book. Intelligence is your love language.",
+    traits: ["romantic", "introspective", "literary", "existential dread"],
+    fullTitle: "The Beautiful Melancholic",
+    fullBody: "You feel things in italics. The world is a text you're constantly annotating, and most people are reading the wrong edition. You don't seek sadness — it just finds someone worth visiting."
+  },
+  {
+    name: "Chaotic Goblincore",
+    accent: "#6b8c5a",
+    accentRgb: "107,140,90",
+    desc: "You've found beauty in what everyone else walks past. Mushrooms, odd textures, the sound of rain on leaves. You collect moments like objects.",
+    traits: ["feral", "curious", "nature-coded", "zero regrets"],
+    fullTitle: "The Feral Collector",
+    fullBody: "You have a rock on your desk with sentimental value. You've named a plant after a fictional character. You are genuinely thriving in a way that confuses everyone around you — and that's exactly how you like it."
+  },
+  {
+    name: "Cyber Nihilist",
+    accent: "#8a7a9e",
+    accentRgb: "138,122,158",
+    desc: "Chronically online, irony-poisoned, and somehow still the most culturally aware person in the room. You feel everything. You just don't admit it.",
+    traits: ["irony-coded", "culturally sharp", "chaotic neutral", "secretly soft"],
+    fullTitle: "The Tender Cynic",
+    fullBody: "You've seen enough of the internet to be done with it and yet here you are. The joke is the armour. Underneath it is someone who cares deeply about things — art, people, ideas — and finds that terrifying."
+  },
+  {
+    name: "Desi Y2K",
+    accent: "#c4687a",
+    accentRgb: "196,104,122",
+    desc: "Unapologetically brown, unashamedly nostalgic. You mix Bollywood lore with butterfly clips and don't explain yourself to anyone.",
+    traits: ["desi coded", "nostalgic", "bold", "culturally rooted"],
+    fullTitle: "The Cultural Remixer",
+    fullBody: "You didn't grow up seeing yourself in aesthetic movements — so you built your own lane. Part nostalgia, part rebellion, all identity. You wear where you came from without apology."
+  },
+  {
+    name: "Silent Luxe",
+    accent: "#9a9080",
+    accentRgb: "154,144,128",
+    desc: "No logos. No noise. Beige everything. You've cultivated an existence so intentionally quiet that it commands attention without asking for it.",
+    traits: ["unbothered", "precise", "old money coded", "minimal effort max output"],
+    fullTitle: "The Quiet Authority",
+    fullBody: "You don't need to announce yourself. The energy does it. You've edited your life down to what actually matters and it turns out that's very little — and that's the whole point."
+  },
+  {
+    name: "Cottagecore Softie",
+    accent: "#a08c72",
+    accentRgb: "160,140,114",
+    desc: "Fairy lights, pressed flowers, the smell of rain. You've chosen softness as a radical act in a world that keeps asking you to be harder.",
+    traits: ["gentle", "sensory", "nature-lover", "cries at sunsets"],
+    fullTitle: "The Radical Softie",
+    fullBody: "You're not naive — you've just decided kindness and wonder are worth protecting. The world will try to knock that out of you. It hasn't worked yet. Keep going."
+  },
+  {
+    name: "Main Character",
+    accent: "#c49050",
+    accentRgb: "196,144,80",
+    desc: "Every moment has a soundtrack in your head. Every walk is a scene. You're not delusional — you've just refused to live life in the background.",
+    traits: ["dramatic (compliment)", "romanticises everything", "cinematic", "the protagonist"],
+    fullTitle: "The Protagonist",
+    fullBody: "The difference between you and everyone else is that you actually believe the story matters. And because you believe it, it does. That's not delusion. That's the actual secret."
+  },
+  {
+    name: "Streetwear Menace",
+    accent: "#7a7a7a",
+    accentRgb: "122,122,122",
+    desc: "Fits before feelings. You've turned getting dressed into a competitive sport and somehow you're always winning.",
+    traits: ["culture-forward", "detail-obsessed", "drip or drown", "always clean"],
+    fullTitle: "The Fit Architect",
+    fullBody: "You notice what people are wearing before you notice their face. Not because you're shallow — because for you, clothes are communication. Every outfit is a sentence and yours are always grammatically impeccable."
+  },
+  {
+    name: "Burnout Intellectual",
+    accent: "#7a8a94",
+    accentRgb: "122,138,148",
+    desc: "You used to care about everything. Now you care about the right things, quietly. The passion didn't leave — it just got more selective.",
+    traits: ["post-passion era", "still reads though", "dry wit", "deeply tired"],
+    fullTitle: "The Quiet Depth",
+    fullBody: "You've been through an enthusiasm cycle or two. Right now you're in the 'selective about what gets my energy' phase and honestly? That's wisdom. You know more than you let on. That's a flex."
+  }
+];
+
+// Scoring map: answer A/B/C/D → which aesthetic bucket
+const SCORE_MAP = {
+  0: [0, 1, 2, 3],   // Q1
+  1: [0, 1, 2, 3],   // Q2
+  2: [0, 1, 2, 7],   // Q3
+  3: [0, 1, 2, 3],   // Q4
+  4: [0, 1, 2, 7],   // Q5
+  5: [5, 1, 2, 8],   // Q6
+  6: [0, 1, 2, 3]    // Q7
+};
+
+/* ── STATE ──────────────────────────────────────────────────── */
+let currentQ = 0;
+let answers = [];
+let scores = new Array(10).fill(0);
+
+/* ── NAVIGATION ─────────────────────────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function startQuiz() {
+  currentQ = 0;
+  answers = [];
+  scores = new Array(10).fill(0);
+  showScreen('quiz');
+  renderQuestion();
+}
+
+function restartQuiz() {
+  startQuiz();
+}
+
+/* ── QUIZ LOGIC ─────────────────────────────────────────────── */
+function renderQuestion() {
+  const q = QUESTIONS[currentQ];
+  document.getElementById('qCounter').textContent = `Question ${currentQ + 1} of ${QUESTIONS.length}`;
+  document.getElementById('qText').textContent = q.q;
+  document.getElementById('progressFill').style.width = `${(currentQ / QUESTIONS.length) * 100}%`;
+
+  const grid = document.getElementById('optionsGrid');
+  grid.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.innerHTML = `<span class="opt-letter">${letters[i]}</span>${opt}`;
+    btn.onclick = () => selectAnswer(i, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function selectAnswer(optIndex, btn) {
+  document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  // tally score
+  const aestheticIndex = SCORE_MAP[currentQ][optIndex];
+  scores[aestheticIndex]++;
+
+  answers.push(optIndex);
+
+  setTimeout(() => {
+    currentQ++;
+    if (currentQ < QUESTIONS.length) {
+      renderQuestion();
+    } else {
+      submitToAI();
+    }
+  }, 320);
+}
+
+/* ── AI CALL ─────────────────────────────────────────────────── */
+async function submitToAI() {
+  showScreen('loading');
+
+  // Find winning aesthetic
+  const maxScore = Math.max(...scores);
+  const topIndex = scores.indexOf(maxScore);
+  const aesthetic = AESTHETICS[topIndex];
+
+  // Build answer summary for Claude
+  const answerSummary = QUESTIONS.map((q, i) => {
+    const letters = ['A','B','C','D'];
+    return `Q${i+1}: "${q.q}" → ${letters[answers[i]]}) ${q.opts[answers[i]]}`;
+  }).join('\n');
+
+  const prompt = `You are a sharp, culturally-aware Gen Z personality reader. Based on these quiz answers, the person's aesthetic identity is "${aesthetic.name}".
+
+Their answers:
+${answerSummary}
+
+Write ONE paragraph (4-5 sentences max) that:
+- Speaks directly to them ("you are...")
+- Is specific to their answers, not generic
+- Has wit and warmth — like a smart friend reading them
+- Ends with one sentence that feels like an affirmation
+- Do NOT use the word "aesthetic" or "vibe" more than once
+- Do NOT be cringe or try-hard
+
+Just the paragraph. No labels, no intro.`;
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer GROQ_KEY"
+      },
+      body: JSON.stringify({
+        model: "llama3-8b-8192",
+        max_tokens: 300,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const aiText = data.choices?.[0]?.message?.content || getFallbackText(aesthetic);
+    showResult(aesthetic, aiText);
+
+  } catch (err) {
+    // Graceful fallback if API key not set yet
+    showResult(aesthetic, getFallbackText(aesthetic));
+  }
+}
+
+function getFallbackText(aesthetic) {
+  return aesthetic.fullBody;
+}
+
+/* ── RESULT ─────────────────────────────────────────────────── */
+function showResult(aesthetic, aiText) {
+  // Set accent color
+  document.documentElement.style.setProperty('--acc', aesthetic.accent);
+  document.documentElement.style.setProperty('--acc-rgb', aesthetic.accentRgb);
+
+  // Card
+  document.getElementById('cardIdentity').innerHTML = aesthetic.name.replace(' ', '<br><span>') + '</span>';
+  document.getElementById('cardDesc').textContent = aesthetic.desc;
+
+  const traitsEl = document.getElementById('cardTraits');
+  traitsEl.innerHTML = aesthetic.traits.map(t => `<span class="trait">${t}</span>`).join('');
+
+  // Full read
+  document.getElementById('resultTitle').textContent = aesthetic.fullTitle;
+  document.getElementById('resultBody').textContent = aiText;
+
+  showScreen('result');
+}
+
+/* ── SHARE ACTIONS ──────────────────────────────────────────── */
+async function saveCard() {
+  const card = document.getElementById('shareCard');
+  try {
+    const canvas = await html2canvas(card, {
+      backgroundColor: null,
+      scale: 3,
+      useCORS: true,
+      logging: false
+    });
+    const link = document.createElement('a');
+    link.download = 'my-vibe-check.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('Card saved ✓');
+  } catch (e) {
+    showToast('Screenshot your screen instead');
+  }
+}
+
+function shareWhatsApp() {
+  const name = document.getElementById('cardIdentity').innerText.replace('\n', ' ');
+  const url = encodeURIComponent('https://vibecheck.vercel.app');
+  const msg = encodeURIComponent(`I just did the Vibe Check quiz and I got "${name}" 💀\nFind out yours → `);
+  window.open(`https://wa.me/?text=${msg}${url}`, '_blank');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+
+</body>
+</html>
